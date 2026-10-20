@@ -46,7 +46,7 @@ body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:non
     backCover: 'cover-belakang.jpg',
     pageWidth: 420,
     pageHeight: 594,
-    renderScale: 1.25
+    renderScale: 1.75
   };
   // ========================================================================
   const $ = id => document.getElementById(id);
@@ -92,14 +92,63 @@ body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:non
       for (let n = 1; n <= pdf.numPages; n++) {
         $('status').textContent = 'Memproses halaman ' + n + ' dari ' + pdf.numPages + '…';
         $('loading').innerHTML = '<div class="spinner"></div>Memproses halaman ' + n + ' dari ' + pdf.numPages + '…';
-        const pdfPage = await pdf.getPage(n);
-        const base = pdfPage.getViewport({scale:1});
-        const scale = Math.min(CONFIG.pageWidth/base.width, CONFIG.pageHeight/base.height) * CONFIG.renderScale;
-        const viewport = pdfPage.getViewport({scale});
-        const canvas = document.createElement('canvas'); canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
-        const ctx = canvas.getContext('2d', {alpha:false}); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        await pdfPage.render({canvasContext:ctx, viewport}).promise;
-        pages.push(makePage(canvas));
+const pdfPage = await pdf.getPage(n);
+
+// Ukuran dasar halaman PDF
+const base = pdfPage.getViewport({ scale: 1 });
+
+// Sesuaikan halaman dengan ukuran flipbook
+const fitScale = Math.min(
+  CONFIG.pageWidth / base.width,
+  CONFIG.pageHeight / base.height
+);
+
+// Skala render untuk mempertajam tulisan.
+// Batas skala membantu menjaga penggunaan memori.
+const renderScale = Math.min(
+  CONFIG.renderScale,
+  Math.max(1, window.devicePixelRatio || 1),
+  1.75
+);
+
+const viewport = pdfPage.getViewport({
+  scale: fitScale * renderScale
+});
+
+// Buat canvas dengan resolusi sesuai hasil render
+const canvas = document.createElement('canvas');
+
+canvas.width = Math.ceil(viewport.width);
+canvas.height = Math.ceil(viewport.height);
+
+// Ukuran tampilan tetap mengikuti halaman flipbook
+canvas.style.width = '100%';
+canvas.style.height = '100%';
+canvas.style.display = 'block';
+
+const ctx = canvas.getContext('2d', {
+  alpha: false
+});
+
+if (!ctx) {
+  throw new Error('Tidak dapat membuat canvas untuk halaman ' + n);
+}
+
+// Background putih agar hasil scan tetap bersih
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// Render PDF dengan resolusi yang lebih tinggi
+await pdfPage.render({
+  canvasContext: ctx,
+  viewport: viewport
+}).promise;
+
+// Masukkan hasil render ke halaman flipbook
+pages.push(makePage(canvas));
+
+// Lepaskan referensi halaman PDF yang sudah selesai
+pdfPage.cleanup();
       }
       pages.push(makeCover(CONFIG.backCover, 'Cover Belakang'));
       totalPages = pages.length;
