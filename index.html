@@ -15,7 +15,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:14px;pa
 main{max-width:1300px;margin:auto;padding:28px 16px 24px}.intro{text-align:center;margin:0 auto 24px}.eyebrow{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}h1{font:400 clamp(27px,4vw,43px)/1.15 Georgia,"Times New Roman",serif;margin:0 0 8px}.intro p{font-size:13px;color:var(--muted);margin:0}
 #loading{margin:30px auto;text-align:center;color:var(--gold);line-height:1.8}.spinner{width:28px;height:28px;border:2px solid #ffffff25;border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}@keyframes spin{to{transform:rotate(360deg)}}
 #error{display:none;white-space:pre-wrap;max-width:720px;margin:20px auto;padding:16px;border:1px solid #a95c65;border-radius:10px;background:#52252c55;color:#ffe1e3;font-size:13px;line-height:1.65}
-#book-wrap{width:100%;min-height:320px;display:flex;align-items:center;justify-content:center;overflow:visible}#book{margin:auto}.page{background:#fff;color:#222;overflow:hidden}.page-content{width:100%;height:100%;position:relative;background:#fff;overflow:hidden}.page-content canvas,.page-content img{display:block;width:100%;height:100%;object-fit:contain}.page.cover .page-content{background:#202536}.page.cover img{object-fit:cover}.cover-fallback{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;background:#202536;color:var(--gold);font:24px Georgia,serif}
+#book-wrap{width:100%;min-height:320px;display:flex;align-items:center;justify-content:center;overflow:visible;touch-action:pan-y}#book{margin:auto}.page{background:#fff;color:#222;overflow:hidden}.page-content{width:100%;height:100%;position:relative;background:#fff;overflow:hidden}.page-content canvas,.page-content img{display:block;width:100%;height:100%;object-fit:contain}.page.cover .page-content{background:#202536}.page.cover img{object-fit:cover}.cover-fallback{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;background:#202536;color:var(--gold);font:24px Georgia,serif}
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:23px auto 10px}button{font:inherit;font-size:12px;color:var(--text);background:linear-gradient(#252d40,#1b2130);border:1px solid #ffffff22;border-radius:8px;padding:10px 13px;cursor:pointer;transition:.2s}button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}button:disabled{opacity:.35;cursor:not-allowed}#page-info{min-width:82px;text-align:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}#progress{height:3px;max-width:430px;width:75%;margin:15px auto 0;background:#ffffff1c;border-radius:9px;overflow:hidden}#progress-bar{height:100%;width:0;background:var(--gold);transition:width .2s}.help{text-align:center;color:var(--muted);font-size:11px;line-height:1.7;margin:15px auto 0}footer{text-align:center;color:#778195;font-size:10px;letter-spacing:.13em;padding:22px 12px;border-top:1px solid #ffffff12}
 body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:none}body.fullscreen main{max-width:none;padding:8px}body.fullscreen #book-wrap{height:calc(100vh - 115px)}
 @media(max-width:600px){header{padding:14px}.brand{font-size:12px}main{padding:22px 5px}#book-wrap{min-height:270px}.toolbar{gap:6px;margin-top:18px}button{padding:9px 10px;font-size:11px}.help{padding:0 12px}}
@@ -29,10 +29,10 @@ body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:non
   <div id="error"></div>
   <div id="book-wrap"><div id="book"></div></div>
   <div class="toolbar">
-    <button id="first" disabled>⏮ Awal</button><button id="prev" disabled>← Sebelumnya</button><span id="page-info">— / —</span><button id="next" disabled>Berikutnya →</button><button id="last" disabled>Akhir ⏭</button><button id="zoom-out" disabled>− Zoom</button><button id="zoom-in" disabled>+ Zoom</button><button id="fullscreen">⛶ Fullscreen</button>
+    <button id="first" disabled>⏮ Awal</button><button id="prev" disabled>← Sebelumnya</button><span id="page-info">— / —</span><button id="next" disabled>Berikutnya →</button><button id="last" disabled>Akhir ⏭</button>
   </div>
   <div id="progress"><div id="progress-bar"></div></div>
-  <p class="help">Klik atau tarik sudut halaman untuk membalik buku. Gunakan tombol panah ← → pada keyboard.</p>
+  <p class="help">HP: cubit dua jari untuk zoom in/out. Geser atau tarik sudut halaman untuk membalik buku. Laptop: gunakan tombol panah ← →.</p>
 </main>
 <footer>MY FLIPBOOK · YOUR CONTENT · YOUR WEBSITE</footer>
 <script>
@@ -51,7 +51,7 @@ body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:non
   // ========================================================================
   const $ = id => document.getElementById(id);
   const bookEl = $('book');
-  let pageFlip = null, ready = false, totalPages = 0, zoom = 1;
+  let pageFlip = null, ready = false, totalPages = 0, zoom = 1, pinchStartDistance = 0, pinchStartZoom = 1;
   $('book-title').textContent = CONFIG.title;
   document.title = CONFIG.title + ' — Flipbook';
 
@@ -111,7 +111,7 @@ body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:non
       pageFlip.loadFromHTML(bookEl.querySelectorAll('.page'));
       pageFlip.on('flip', updateControls);
       $('loading').style.display = 'none'; $('status').textContent = 'Buku siap dibaca'; ready = true;
-      ['first','prev','next','last','zoom-in','zoom-out'].forEach(id => $(id).disabled = false);
+      ['first','prev','next','last'].forEach(id => $(id).disabled = false);
       updateControls();
     } catch (e) {
       console.error(e);
@@ -130,11 +130,34 @@ body.fullscreen header,body.fullscreen .intro,body.fullscreen footer{display:non
   $('prev').onclick = () => pageFlip && pageFlip.flipPrev();
   $('next').onclick = () => pageFlip && pageFlip.flipNext();
   $('last').onclick = () => pageFlip && pageFlip.turnToPage(totalPages-1);
-  function applyZoom(){ $('book-wrap').style.transform='scale('+zoom+')'; $('book-wrap').style.transformOrigin='top center'; $('book-wrap').style.marginBottom=((zoom-1)*280)+'px'; }
-  $('zoom-in').onclick = () => {zoom=Math.min(1.35,zoom+.1);applyZoom();};
-  $('zoom-out').onclick = () => {zoom=Math.max(.75,zoom-.1);applyZoom();};
-  $('fullscreen').onclick = async () => { try { if(!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch(e){ alert('Mode fullscreen tidak didukung browser ini.'); } };
-  document.addEventListener('fullscreenchange',()=>{const on=!!document.fullscreenElement;document.body.classList.toggle('fullscreen',on);$('fullscreen').textContent=on?'✕ Keluar Fullscreen':'⛶ Fullscreen';if(pageFlip)pageFlip.update();});
+  // Pinch-to-zoom pada layar sentuh: dua jari mendekat = zoom out, menjauh = zoom in.
+  const bookWrap = $('book-wrap');
+  function applyZoom(){
+    bookWrap.style.transform = 'scale(' + zoom + ')';
+    bookWrap.style.transformOrigin = 'top center';
+    bookWrap.style.marginBottom = Math.max(-80, (zoom - 1) * Math.min(window.innerWidth * .72, 420)) + 'px';
+  }
+  function touchDistance(touches){
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+  bookWrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      pinchStartDistance = touchDistance(e.touches);
+      pinchStartZoom = zoom;
+    }
+  }, {passive:true});
+  bookWrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && pinchStartDistance > 0) {
+      e.preventDefault();
+      zoom = Math.max(.65, Math.min(2.2, pinchStartZoom * touchDistance(e.touches) / pinchStartDistance));
+      applyZoom();
+    }
+  }, {passive:false});
+  bookWrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinchStartDistance = 0;
+  }, {passive:true});
   document.addEventListener('keydown',e=>{if(!pageFlip||!ready||e.target.matches('input,textarea'))return;if(e.key==='ArrowRight')pageFlip.flipNext();if(e.key==='ArrowLeft')pageFlip.flipPrev();});
   loadBook();
 })();
