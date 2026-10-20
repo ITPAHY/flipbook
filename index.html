@@ -184,6 +184,17 @@ pageFlip = new St.PageFlip(bookEl, {
   useMouseEvents: true
 });
       pageFlip.loadFromHTML(bookEl.querySelectorAll('.page'));
+      bookWrap.addEventListener('touchmove', function(e) {
+  if (e.touches.length !== 1 || zoom > 1.02) return;
+
+  const t = e.touches[0];
+  const dx = Math.abs(t.clientX - touchStartX);
+  const dy = Math.abs(t.clientY - touchStartY);
+
+  if (dx > dy && dx > 10) {
+    e.stopImmediatePropagation();
+  }
+}, { capture: true, passive: true });
       pageFlip.on('flip', updateControls);
       $('loading').style.display = 'none'; $('status').textContent = 'Buku siap dibaca'; ready = true;
       ['first','prev','next','last'].forEach(id => $(id).disabled = false);
